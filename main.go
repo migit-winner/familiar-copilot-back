@@ -10,20 +10,13 @@ import (
 
 var upgrader = &websocket.Upgrader{}
 
-func handleWebSocket(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
+func websocketLoop(ws *websocket.Conn) {
 	defer ws.Close()
-
-	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
-
 	for {
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
 			fmt.Printf("websocket error: %s\n", err)
-			return nil
+			return
 		}
 
 		fmt.Printf("websocket receive: %s\n", msg)
@@ -31,11 +24,22 @@ func handleWebSocket(c echo.Context) error {
 		err = ws.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			fmt.Printf("websocket error: %s\n", err)
-			return nil
+			return
 		}
 	}
+}
 
-	//return nil
+func handleWebSocket(c echo.Context) error {
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
+
+	go websocketLoop(ws)
+
+	return nil
 }
 
 func main() {
