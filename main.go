@@ -3,6 +3,7 @@ package main
 import (
 	"familiar-copilot-back/domain"
 	"familiar-copilot-back/handler"
+	"familiar-copilot-back/infra"
 
 	"log"
 	"net/http"
@@ -17,11 +18,14 @@ import (
 
 func main() {
 	e := echo.New()
-	hundler := handler.NewHundler()
-	err := hundler.DBConnect()
+	dbClient := &infra.DBClient{}
+	err := dbClient.DBConnect()
 	if err != nil {
 		log.Fatal(err)
 	}
+	apiHandler := handler.NewAPIHandler(dbClient)
+	webSocketHandler := handler.NewWebSocketHandler(dbClient)
+
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(
@@ -30,8 +34,8 @@ func main() {
 			AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
 			AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
 		}))
-	e.POST("/user", hundler.CreateUaer)
-	e.GET("/login", handler.Login)
+	e.POST("/user", apiHandler.CreateUaer)
+	e.GET("/login", apiHandler.Login)
 
 	restricted := e.Group("")
 	restricted.Use(echojwt.WithConfig(echojwt.Config{
@@ -40,7 +44,6 @@ func main() {
 			return &domain.JwtCustomClaims{}
 		},
 	}))
-	webSocketHundler := handler.NewWebSocketHundler()
-	restricted.GET("/ws", webSocketHundler.HandleWebSocket)
+	restricted.GET("/ws", webSocketHandler.HandleWebSocket)
 	e.Logger.Fatal(e.Start(":8080"))
 }

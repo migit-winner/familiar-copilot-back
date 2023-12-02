@@ -2,6 +2,7 @@ package handler
 
 import (
 	"familiar-copilot-back/domain"
+	"familiar-copilot-back/infra"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,15 +10,16 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type WebSocketHundler struct {
+type WebSocketHandler struct {
 	upgrader *websocket.Upgrader
+	dbClient *infra.DBClient
 }
 
-func NewWebSocketHundler() *WebSocketHundler {
-	return &WebSocketHundler{&websocket.Upgrader{}}
+func NewWebSocketHandler(dbClient *infra.DBClient) *WebSocketHandler {
+	return &WebSocketHandler{&websocket.Upgrader{}, dbClient}
 }
 
-func (w *WebSocketHundler) websocketLoop(ws *websocket.Conn) {
+func (w *WebSocketHandler) websocketLoop(ws *websocket.Conn, user domain.User) {
 	defer ws.Close()
 	for {
 		_, msg, err := ws.ReadMessage()
@@ -36,15 +38,18 @@ func (w *WebSocketHundler) websocketLoop(ws *websocket.Conn) {
 	}
 }
 
-func (w *WebSocketHundler) HandleWebSocket(c echo.Context) error {
-	user, ok := c.Get("user").(*jwt.Token)
+func (w *WebSocketHandler) HandleWebSocket(c echo.Context) error {
+	token, ok := c.Get("user").(*jwt.Token)
 	if !ok {
 		return echo.ErrUnauthorized
 	}
 
-	claims := user.Claims.(*domain.JwtCustomClaims)
+	claims := token.Claims.(*domain.JwtCustomClaims)
 	userID := claims.UserID
-	fmt.Printf("user id: %d\n", userID)
+	user, err := w.dbClient.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
 
 	ws, err := w.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -54,7 +59,7 @@ func (w *WebSocketHundler) HandleWebSocket(c echo.Context) error {
 	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
 
 	ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Your user ID is %d", userID)))
-	go w.websocketLoop(ws)
+	go w.websocketLoop(ws, user)
 
 	return nil
 }

@@ -2,62 +2,32 @@ package handler
 
 import (
 	"familiar-copilot-back/domain"
-	"fmt"
+	"familiar-copilot-back/infra"
 	"net/http"
 	"time"
-
-	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
-type User struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
+type APIHandler struct {
+	dbClient *infra.DBClient
 }
 
-type Hundler struct {
-	db *sql.DB
+func NewAPIHandler(dbClient *infra.DBClient) *APIHandler {
+	return &APIHandler{dbClient}
 }
 
-func NewHundler() *Hundler {
-	return &Hundler{}
-}
-
-func (h *Hundler) DBConnect() error {
-	// DB接続
-	dbconf := "user:password@tcp(db:3306)/FAMILIA_COPILOT?charset=utf8mb4"
-
-	var err error
-	h.db, err = sql.Open("mysql", dbconf)
-	if err != nil {
-		return err
-	}
-
-	err = h.db.Ping()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (h *Hundler) CreateUaer(c echo.Context) error {
+func (h *APIHandler) CreateUaer(c echo.Context) error {
 	// リクエストパラメータ取得
-	var user User
+	var user domain.User
 	err := c.Bind(&user)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, "パラメータが不正です")
 	}
 
-	err = h.db.Ping()
-	if err != nil {
-		return err
-	}
-
-	_, err = h.db.Exec("INSERT INTO users (name, password) VALUES (?, ?)", user.Name, user.Password)
+	err = h.dbClient.CreateUaer(user.Name, user.Password)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, "ユーザー登録エラー :"+err.Error())
 	}
@@ -65,16 +35,21 @@ func (h *Hundler) CreateUaer(c echo.Context) error {
 	return c.JSON(http.StatusOK, "ユーザー登録完了")
 }
 
-func Login(c echo.Context) error {
+func (h *APIHandler) Login(c echo.Context) error {
 	username := c.QueryParam("username")
 	password := c.QueryParam("password")
 
 	// TODO: データベースからユーザーを取得する
-	fmt.Printf("Login: username=%s, password=%s\n", username, password)
-	userID := 1 // 仮のユーザーID
+	user, err := h.dbClient.GetUserByName(username)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, "ユーザーが存在しません")
+	}
+	if user.Password != password {
+		return c.JSON(http.StatusUnauthorized, "パスワードが間違っています")
+	}
 
 	claims := &domain.JwtCustomClaims{
-		UserID: userID,
+		UserID: user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
