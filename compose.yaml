@@ -9,8 +9,8 @@ services:
       - ./:/app
     ports:
       - "8080:8080"
-    env_file:  # 環境変数
-      - .env
+    # env_file:  # 環境変数
+    #   - .env
     depends_on:
       - db
     tty: true
