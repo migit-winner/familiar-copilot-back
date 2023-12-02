@@ -23,7 +23,7 @@ services:
       - db-data:/var/lib/mysql
     environment:
         MYSQL_ROOT_PASSWORD: pass
-        MYSQL_DATABASE: ANIME_RANKING
+        MYSQL_DATABASE: FAMILIA_COPILOT
         MYSQL_USER: user
         MYSQL_PASSWORD: password
     ports:
