@@ -8,9 +8,15 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-var upgrader = &websocket.Upgrader{}
+type WebSocketHundler struct {
+	upgrader *websocket.Upgrader
+}
 
-func websocketLoop(ws *websocket.Conn) {
+func NewWebSocketHundler() *WebSocketHundler {
+	return &WebSocketHundler{}
+}
+
+func (w *WebSocketHundler) websocketLoop(ws *websocket.Conn) {
 	defer ws.Close()
 	for {
 		_, msg, err := ws.ReadMessage()
@@ -29,22 +35,23 @@ func websocketLoop(ws *websocket.Conn) {
 	}
 }
 
-func handleWebSocket(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+func (w *WebSocketHundler) handleWebSocket(c echo.Context) error {
+	ws, err := w.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
 
-	go websocketLoop(ws)
+	go w.websocketLoop(ws)
 
 	return nil
 }
 
 func main() {
 	e := echo.New()
+	webSocketHundler := NewWebSocketHundler()
 	e.Use(middleware.Logger())
-	e.GET("/ws", handleWebSocket)
+	e.GET("/ws", webSocketHundler.handleWebSocket)
 	e.Logger.Fatal(e.Start(":8080"))
 }
