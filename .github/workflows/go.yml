@@ -32,7 +32,7 @@ jobs:
           gofmt -s -l -w .
           git diff --exit-code
           if [ $? -eq 1 ]; then
-            echo "make fmt で差分が出ました。手元で make fmt を実行してください。"
+            echo "gofmt -s -l -w . で差分が出ました。手元で gofmt -s -l -w . を実行してください。"
             exit 1
           fi
 
