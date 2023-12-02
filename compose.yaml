@@ -26,8 +26,6 @@ services:
       MYSQL_DATABASE: FAMILIA_COPILOT
       MYSQL_USER: user
       MYSQL_PASSWORD: password
-    ports:
-      - 3306:3306
 
 volumes:
   db-data:
