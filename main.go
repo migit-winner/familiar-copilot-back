@@ -16,7 +16,7 @@ func NewWebSocketHundler() *WebSocketHundler {
 	return &WebSocketHundler{}
 }
 
-func websocketLoop(ws *websocket.Conn) {
+func (w *WebSocketHundler) websocketLoop(ws *websocket.Conn) {
 	defer ws.Close()
 	for {
 		_, msg, err := ws.ReadMessage()
@@ -35,15 +35,15 @@ func websocketLoop(ws *websocket.Conn) {
 	}
 }
 
-func (h *WebSocketHundler) handleWebSocket(c echo.Context) error {
-	ws, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
+func (w *WebSocketHundler) handleWebSocket(c echo.Context) error {
+	ws, err := w.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
 
-	go websocketLoop(ws)
+	go w.websocketLoop(ws)
 
 	return nil
 }
