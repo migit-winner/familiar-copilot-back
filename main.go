@@ -2,43 +2,45 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"golang.org/x/net/websocket"
 )
 
+var upgrader = &websocket.Upgrader{}
+
 func handleWebSocket(c echo.Context) error {
-	websocket.Handler(func(ws *websocket.Conn) {
-		defer ws.Close()
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
 
-		// 初回のメッセージを送信
-		err := websocket.Message.Send(ws, "Server: Hello, Client!")
+	fmt.Printf("websocket connected: %s\n", ws.RemoteAddr())
+
+	for {
+		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			c.Logger().Error(err)
+			fmt.Printf("websocket error: %s\n", err)
+			return nil
 		}
 
-		for {
-			// Client からのメッセージを読み込む
-			msg := ""
-			err = websocket.Message.Receive(ws, &msg)
-			if err != nil {
-				c.Logger().Error(err)
-			}
+		fmt.Printf("websocket receive: %s\n", msg)
 
-			// Client からのメッセージを元に返すメッセージを作成し送信する
-			err := websocket.Message.Send(ws, fmt.Sprintf("Server: \"%s\" received!", msg))
-			if err != nil {
-				c.Logger().Error(err)
-			}
+		err = ws.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
+			fmt.Printf("websocket error: %s\n", err)
+			return nil
 		}
-	}).ServeHTTP(c.Response(), c.Request())
-	return nil
+	}
+
+	//return nil
 }
 
 func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
-	e.Static("/", "public")
 	e.GET("/ws", handleWebSocket)
 	e.Logger.Fatal(e.Start(":8080"))
 }
