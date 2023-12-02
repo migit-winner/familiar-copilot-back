@@ -8,7 +8,13 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-var upgrader = &websocket.Upgrader{}
+type Hundler struct {
+	upgrader *websocket.Upgrader
+}
+
+func NewHundler() *Hundler {
+	return &Hundler{}
+}
 
 func websocketLoop(ws *websocket.Conn) {
 	defer ws.Close()
@@ -29,8 +35,8 @@ func websocketLoop(ws *websocket.Conn) {
 	}
 }
 
-func handleWebSocket(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+func (h *Hundler) handleWebSocket(c echo.Context) error {
+	ws, err := h.upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
@@ -44,7 +50,8 @@ func handleWebSocket(c echo.Context) error {
 
 func main() {
 	e := echo.New()
+	hundler := NewHundler()
 	e.Use(middleware.Logger())
-	e.GET("/ws", handleWebSocket)
+	e.GET("/ws", hundler.handleWebSocket)
 	e.Logger.Fatal(e.Start(":8080"))
 }
