@@ -32,44 +32,42 @@ func (w *WebSocketHandler) websocketLoop(ws *websocket.Conn, user domain.User) {
 		var message Message
 		err := ws.ReadJSON(&message)
 
-		if err == nil {
-			middleText, err := w.openAIClient.GenMiddleText(message.Before, message.After)
-			if err != nil {
-				fmt.Printf("openai error: %s\n", err)
-				var response struct {
-					Error string `json:"error"`
-				}
-				response.Error = "openai error"
-				responseJSON, _ := json.Marshal(response)
-
-				err = ws.WriteMessage(websocket.TextMessage, responseJSON)
-				if err != nil {
-					fmt.Printf("websocket error: %s\n", err)
-					return
-				}
-				continue
-			}
-			var response struct {
-				Middle string `json:"middle"`
-			}
-			response.Middle = middleText
-			responseJSON, _ := json.Marshal(response)
-			err = ws.WriteMessage(websocket.TextMessage, responseJSON)
-			if err != nil {
-				fmt.Printf("websocket error: %s\n", err)
-				return
-			}
-		} else {
-			var response struct {
+		if err != nil {
+			response := struct {
 				Error string `json:"error"`
-			}
-			response.Error = "invalid json"
+			}{"invalid json"}
 			responseJSON, _ := json.Marshal(response)
 			err = ws.WriteMessage(websocket.TextMessage, responseJSON)
 			if err != nil {
 				fmt.Printf("websocket error: %s\n", err)
 				return
 			}
+			continue
+		}
+
+		middleText, err := w.openAIClient.GenMiddleText(message.Before, message.After)
+		if err != nil {
+			fmt.Printf("openai error: %s\n", err)
+			response := struct {
+				Error string `json:"error"`
+			}{"openai error"}
+			responseJSON, _ := json.Marshal(response)
+
+			err = ws.WriteMessage(websocket.TextMessage, responseJSON)
+			if err != nil {
+				fmt.Printf("websocket error: %s\n", err)
+				return
+			}
+			continue
+		}
+		response := struct {
+			Middle string `json:"middle"`
+		}{middleText}
+		responseJSON, _ := json.Marshal(response)
+		err = ws.WriteMessage(websocket.TextMessage, responseJSON)
+		if err != nil {
+			fmt.Printf("websocket error: %s\n", err)
+			return
 		}
 
 	}
