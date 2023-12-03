@@ -4,11 +4,13 @@ import (
 	"familiar-copilot-back/domain"
 	"familiar-copilot-back/handler"
 	"familiar-copilot-back/infra"
+	"os"
 
 	"log"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v4"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -17,14 +19,22 @@ import (
 )
 
 func main() {
-	e := echo.New()
-	dbClient := &infra.DBClient{}
-	err := dbClient.DBConnect()
+	err := godotenv.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	e := echo.New()
+	dbClient := &infra.DBClient{}
+	err = dbClient.DBConnect()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	openAIClient := infra.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"))
+
 	apiHandler := handler.NewAPIHandler(dbClient)
-	webSocketHandler := handler.NewWebSocketHandler(dbClient)
+	webSocketHandler := handler.NewWebSocketHandler(dbClient, openAIClient)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())

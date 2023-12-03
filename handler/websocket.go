@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"familiar-copilot-back/domain"
 	"familiar-copilot-back/infra"
 	"fmt"
@@ -11,30 +12,64 @@ import (
 )
 
 type WebSocketHandler struct {
-	upgrader *websocket.Upgrader
-	dbClient *infra.DBClient
+	upgrader     *websocket.Upgrader
+	dbClient     *infra.DBClient
+	openAIClient *infra.OpenAIClient
 }
 
-func NewWebSocketHandler(dbClient *infra.DBClient) *WebSocketHandler {
-	return &WebSocketHandler{&websocket.Upgrader{}, dbClient}
+func NewWebSocketHandler(dbClient *infra.DBClient, openAIClient *infra.OpenAIClient) *WebSocketHandler {
+	return &WebSocketHandler{&websocket.Upgrader{}, dbClient, openAIClient}
+}
+
+type Message struct {
+	Before string `json:"before"`
+	After  string `json:"after"`
 }
 
 func (w *WebSocketHandler) websocketLoop(ws *websocket.Conn, user domain.User) {
 	defer ws.Close()
 	for {
-		_, msg, err := ws.ReadMessage()
+		var message Message
+		err := ws.ReadJSON(&message)
+
+		if err != nil {
+			response := struct {
+				Error string `json:"error"`
+			}{"invalid json"}
+			responseJSON, _ := json.Marshal(response)
+			err = ws.WriteMessage(websocket.TextMessage, responseJSON)
+			if err != nil {
+				fmt.Printf("websocket error: %s\n", err)
+				return
+			}
+			continue
+		}
+
+		middleText, err := w.openAIClient.GenMiddleText(message.Before, message.After)
+		if err != nil {
+			fmt.Printf("openai error: %s\n", err)
+			response := struct {
+				Error string `json:"error"`
+			}{"openai error"}
+			responseJSON, _ := json.Marshal(response)
+
+			err = ws.WriteMessage(websocket.TextMessage, responseJSON)
+			if err != nil {
+				fmt.Printf("websocket error: %s\n", err)
+				return
+			}
+			continue
+		}
+		response := struct {
+			Middle string `json:"middle"`
+		}{middleText}
+		responseJSON, _ := json.Marshal(response)
+		err = ws.WriteMessage(websocket.TextMessage, responseJSON)
 		if err != nil {
 			fmt.Printf("websocket error: %s\n", err)
 			return
 		}
 
-		fmt.Printf("websocket receive: %s\n", msg)
-
-		err = ws.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			fmt.Printf("websocket error: %s\n", err)
-			return
-		}
 	}
 }
 
