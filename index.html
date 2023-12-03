@@ -1,0 +1,37 @@
+<body>
+<textarea id="inputarea">
+
+</textarea>
+<script>
+    const suggest = () => {
+        console.log('called');
+        let input = document.getElementById("inputarea");
+        let pos = input.selectionStart;
+        let text = input.value;
+
+        let before = text.substring(0, pos);
+        let after = text.substring(pos, text.length);
+
+        fetch('http://localhost:8080/gen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'before': before,
+                'after': after,
+            })
+        }).then(res => res.json())
+            .then(data => {
+                input.value = before + data['middle'] + after;
+            })
+    }
+
+    // ctrl+Iキーを押したときにsuggestを呼び出す
+    document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey && event.key === 'i') {
+            suggest();
+        }
+    });
+</script>
+</body>

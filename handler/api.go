@@ -12,11 +12,12 @@ import (
 )
 
 type APIHandler struct {
-	dbClient *infra.DBClient
+	dbClient      *infra.DBClient
+	openApiClient *infra.OpenAIClient
 }
 
-func NewAPIHandler(dbClient *infra.DBClient) *APIHandler {
-	return &APIHandler{dbClient}
+func NewAPIHandler(dbClient *infra.DBClient, openApiClient *infra.OpenAIClient) *APIHandler {
+	return &APIHandler{dbClient, openApiClient}
 }
 
 func (h *APIHandler) CreateUaer(c echo.Context) error {
@@ -63,5 +64,23 @@ func (h *APIHandler) Login(c echo.Context) error {
 
 	return c.JSON(200, map[string]string{
 		"token": t,
+	})
+}
+
+func (h *APIHandler) GenMiddleText(c echo.Context) error {
+	var reqBody struct {
+		Before string `json:"before"`
+		After  string `json:"after"`
+	}
+
+	err := c.Bind(&reqBody)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, "パラメータが不正です")
+	}
+
+	middleText, err := h.openApiClient.GenMiddleText(reqBody.Before, reqBody.After)
+
+	return c.JSON(200, map[string]string{
+		"middle": middleText,
 	})
 }

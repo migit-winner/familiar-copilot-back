@@ -10,11 +10,13 @@ import (
 
 const (
 	COMPLETION_ENDPOINT       = "https://api.openai.com/v1/chat/completions"
-	COMPLETION_SYSTEM_MESSAGE = `beforeとafterの間に入る文章をmiddleに作成してください。
-{
-	"middle": ""
-}
-の形式で出力してください。beforeとmiddleの間に改行が必要な場合はmiddleの先頭に\nを明記してください。`
+	COMPLETION_SYSTEM_MESSAGE = `途中まで書かれた文がbeforeとafterで提供されます。beforeとafterの間を補完する文章をmiddleに作成してください。
+	{
+	  "before": "",
+	  "middle": "",
+	  "after": "",
+	}
+	の形式で出力してください。beforeとmiddleの間に改行が必要な場合はmiddleの先頭に\nを明記してください。`
 )
 
 type OpenAIClient struct {

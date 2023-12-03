@@ -33,7 +33,7 @@ func main() {
 
 	openAIClient := infra.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"))
 
-	apiHandler := handler.NewAPIHandler(dbClient)
+	apiHandler := handler.NewAPIHandler(dbClient, openAIClient)
 	webSocketHandler := handler.NewWebSocketHandler(dbClient, openAIClient)
 
 	e.Use(middleware.Logger())
@@ -46,6 +46,7 @@ func main() {
 		}))
 	e.POST("/user", apiHandler.CreateUaer)
 	e.GET("/login", apiHandler.Login)
+	e.POST("/gen", apiHandler.GenMiddleText)
 
 	restricted := e.Group("")
 	restricted.Use(echojwt.WithConfig(echojwt.Config{
